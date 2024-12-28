@@ -36,9 +36,11 @@ def login(request):
         email = request.POST.get('email')
         username = request.POST.get('username')
         password = request.POST.get('password')
-        if not User.objects.get(username=username):
+        if not User.objects.filter(username=username):
             ##TODO: send Email and verifying email address
-            newusr = User.objects.create_user(username=username, email=email,password=User.set_password(password))
+            newusr = User.objects.create_user(username=username, email=email,password=password)
             newusr.first_name = Fname
             newusr.last_name = lname
             newusr.save()
+            return HttpResponse("You're signedup.")
+
