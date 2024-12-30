@@ -19,3 +19,6 @@ class borrowModels(models.Model):
     BbookID = models.ForeignKey(bookModel,on_delete=models.CASCADE)
     bookname = bookModel.titel
     Buser = models.ForeignKey(User,on_delete=models.CASCADE)
+    ##TODO add str method 
+    ##TODO add borrowdate and returndate field 
+    
