@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borrow Book</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Borrow or Return a Book</h1>
+
+    <!-- Search for a Book -->
+    <form action="{% url 'search_book' %}" method="GET">
+        <label for="search">Search for a Book:</label>
+        <input type="text" id="search" name="query" placeholder="Enter book title or author">
+        <button type="submit">Search</button>
+    </form>
+
+    <!-- Borrow a Book -->
+    <form action="{% url 'borrow_book' %}" method="POST">
+        {% csrf_token %}
+        <label for="borrow">Borrow Book by ID:</label>
+        <input type="number" id="borrow" name="book_id" placeholder="Enter book ID">
+        <button type="submit">Borrow</button>
+    </form>
+
+    <!-- Return a Book -->
+    <form action="{% url 'return_book' %}" method="POST">
+        {% csrf_token %}
+        <label for="return">Return Book by ID:</label>
+        <input type="number" id="return" name="book_id" placeholder="Enter book ID">
+        <button type="submit">Return</button>
+    </form>
+
+    <!-- Results Section -->
+    <h2>Search Results:</h2>
+    {% if books %}
+        <ul>
+            {% for book in books %}
+                <li>
+                    <strong>{{ book.title }}</strong> by {{ book.author }}
+                    (ID: {{ book.id }})
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No books found.</p>
+    {% endif %}
+</body>
+</html>
