@@ -1,103 +1,138 @@
 from django.shortcuts import render
 from django.shortcuts import HttpResponse,redirect
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate ,login
+from django.contrib.auth import authenticate 
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import login as auth_login
+
+from libapp.models import bookModel, borrowModel
+
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework.authtoken.models import Token
+from libapp.serializer import bookSerializer, borrowSerializer
 
 # Create your views here.
-def home(request):
-    return HttpResponse('salam')
+
+def authorized(request):
+    if not request.headers["Authorization"].split(" "):
+        return False
+    in_tkn = request.headers["Authorization"].split(" ")
+    if not Token.objects.filter(key=in_tkn[1] if in_tkn[0] == "Token" else None):
+        return False
+    tkn = Token.objects.get(key=in_tkn[1] if in_tkn[0] == "Token" else None)
+    if not User.objects.get(username=tkn.user.username):
+        return False
+    return tkn.user
 
 
-
-
-#request={"status" : "login/signup", 'username':'UN', password:'PW', 'fname' : 'fname', 'lname': 'lname', 'email':'email', }
+@api_view(["POST","GET"])
 def login(request):
-    print(request.POST.get)
-    if request.method == 'GET':
-        context = {
-            'page' : 'login',
-            'st' : 'notLogin',
-            'msg' : ""
-        }
-        return render(request,'libapp/login.html',context)
-    elif request.POST.get('login'):
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        usr = authenticate(request,username=username,password=password)
-        if usr:
-            request.session['user_id'] = User.objects.get(username=username).id
-            
-            context = {
-                'page': 'login',
-                'st' : 'loggedin',
-                'msg' : "You're logged in."
-            }
-            #return HttpResponse("You're logged in.")
-            return render(request,'libapp/login.html',context)
-        else:
-            context = {
-                'page' : 'login',
-                'st' : 'not login',
-                'msg' : "Your Username and Password didn't match."
-            }
-            #return HttpResponse("Your Username and Password didn't match.")
-            return render(request,'libapp/login.html',context)
-    return HttpResponse('')
-def signup(request):
-    if request.method == 'POST':
-        ##TODO  use while to ask agin when some field is empty
-        Fname = request.POST.get('Fname')
-        Lname = request.POST.get('Lname')
-        email = request.POST.get('email')
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        if not User.objects.filter(username=username):
-            ##TODO  send Email and verifying email address
-            newusr.first_name = Fname
-            newusr.last_name = Lname
-            newusr = User.objects.create_user(lastnname=Lname,firstname=Fname ,username=username, email=email,password=password)
-            newusr.save()
-            context = {
-                'page' : 'signup',
-                'st' : 'notLogin',
-                'msg' : "your account is created",
-            }
-        else: 
-            context = {
-                'page' : 'signup',
-                'st' : 'notLogin',
-                'msg' : "your username is not available"
-            }
-
-        return render(request,'libapp/signup.html',context)
+    if 'username' not in request.POST or 'password' not in request.POST:
+        return Response({'status' : 'not loggedin','message' : "Your Username and Password didn't match."})
+    username = request.POST['username']
+    password = request.POST['password']
+    if User.objects.get(username=username).check_password(password):
+        user = User.objects.get(username=username)
+        tkn = Token.objects.get(user=user).key
+        
+        return Response({'status': 'logged in', 'message' : 'your loggedin','Token' : tkn})
     else:
+        return Response({'status' : 'not loggedin','message' : "Your Username and Password didn't match."})
+## TODO reset token
+
+@api_view(['POST'])
+def signup(request):
+    for arg in ['Fname', 'Lname','email','username','password']:
+        if arg not in request.POST:
+            return Response({'status' : 'not logged in', 'message' : f'try agin, {arg} is not found'})
+    Fname = request.POST.get('Fname')
+    Lname = request.POST.get('Lname')
+    email = request.POST.get('email')
+    username = request.POST.get('username')
+    password = request.POST.get('password')
+    if not User.objects.filter(username=username):
+        ##TODO  send Email and verifying email address
+        User.objects.create_user(last_name=Lname,first_name=Fname ,username=username, email=email,password=password)
+        newuser = User.objects.get(username=username)
+        token = Token.objects.create(user=newuser)
+
+        return Response({'status':'not logged in', 'message':'user created successfuly!', 'TOKEN' : f'{token}'})
+    else: 
+        return Response({'status' : 'not Login', 'message' : "your username is not available"})
+
+## TODO func delete user
+      
+@api_view(["POST","GET"])
+def search(request):
+    ## TODO search with other fields
+    if not authorized(request):
+        return Response({'Detaile' : 'Access Denied'})
+    if request.method == 'POST':
+        search_word = request.POST['search']
+        search_cases = bookModel.objects.filter(title=search_word)
+        if search_cases:
+            SRList = [bookSerializer(search_case).data for search_case in search_cases]
+        else:
+            SRList = ""
         context = {
-            'page' : 'signup',
-            'st' : 'notLogin',
-            'msg' : ""
+            'SRList' : SRList,
+            'username' : authorized(request).username
         }
-        return render(request,'libapp/signup.html',context)
+        return Response(context)
 
-#    elif request.POST.get('test')=='test':
-#        if request.user.is_authenticated:
-#            return HttpResponse('true!')
-#        else:
-#            return HttpResponse(request.user)
+@api_view(["POST","GET"])
+def borrow(request):
+    if request.method == "POST":
+        Buser = authorized(request)
+        bookID = request.POST['bookID']
+        allfild = True if False not in [Buser, bookID] else False
+        if not allfild:
+            return Response({'message':'your request most have "bookID" & correct Token header'})
+        Bbook = bookModel.objects.get(bookID=bookID)
+        if Bbook.bookcounter < 1:
+            return Response({'message' : 'this book is not available in repositorys'})
 
-def borrow(request,borrow):
-    if borrow == 'borrow':
-        pass
-    elif borrow == 'return':
-        pass
-    elif borrow =='':
-        if request.method == 'GET':
-            username = request.user.username
-            context = {
-                'status' : 'get',
-                'username': username,
-            }
-            return render(request, context)
-        elif request.method == 'POST':
-            pass
-        pass
+        borrowdate = request.POST['Bdate'] if 'Bdate' in request.POST else None
+        returndate = request.POST['Rdate'] if 'Rdate' in request.POST else None 
+        if borrowdate and returndate:
+            borrowModel.objects.create(Bbook=Bbook,Buser=Buser,borrowdate=borrowdate,returndate=returndate)
+        elif borrowdate and not returndate:
+            borrowModel.objects.create(Bbook=Bbook,Buser=Buser,borrowdate=borrowdate)
+        elif not borrowdate and returndate:
+            borrowModel.objects.create(Bbook=Bbook,Buser=Buser,returndate=returndate)
+        elif not borrowdate and not returndate:
+            borrowModel.objects.create(Bbook=Bbook,Buser=Buser)
+        Bbook.bookcounter -= 1
+        Bbook.save()
+        borrow = borrowModel.objects.get(Bbook=Bbook,Buser=Buser)
+        return Response({'message' : 'The book borrowed to you', 'borrow': borrowSerializer(borrow).data})
+    elif request.method == "GET":
+        auth = authorized(request)
+        if auth:
+            borrowedList = borrowModel.objects.filter(Buser=auth) 
+            return Response({'message' : 'authorized','borrowList' : [borrowSerializer(borrowed).data for borrowed in borrowedList]})
+        return Response({'message' : 'not authorized'})
+
+@api_view(['POST'])
+def returnbook(request):
+    if request.method == "POST":
+        if not authorized(request):
+            return Response({'message': 'your not Authorized'})
+        borrowID = request.POST['borrowID']
+        auth = authorized(request)
+        if not request.POST['borrowID'] or not borrowModel.objects.get(borrowID=borrowID, Buser=auth):
+            return Response({'message': 'borrow is not exist'})
+        borrow = borrowModel.objects.get(borrowID=borrowID, Buser=auth)
+        book = borrow.Bbook
+        book.bookcounter += 1
+        book.save()
+        borrow.delete()
+        return Response({'message': 'books returned'})
+    
+
+
+
+
+
+##TODO show books borrowed with user 
