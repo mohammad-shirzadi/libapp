@@ -1,0 +1,8 @@
+curl -d "username=username&password=password" http://localhost:8000/api/login/
+curl -d "Fname=Fname&Lname=Lname&email=email&username=username&password=password" http://localhost:8000/api/signup/
+curl -d "search=<search>" -H "Authorization: Token 6f4440e66e9325ef1b2274376952f1b32da2da8b" http://localhost:8000/api/search/  
+curl -H "Authorization: Token 6f4440e66e9325ef1b2274376952f1b32da2da8b" http://localhost:8000/api/borrow/
+curl -d "bookID=<bookID>" -H "Authorization: Token 6f4440e66e9325ef1b2274376952f1b32da2da8b" http://localhost:8000/api/borrow/
+curl -d "borrowID=<borrowID>" -H "Authorization: Token 6f4440e66e9325ef1b2274376952f1b32da2da8b" http://localhost:8000/api/returnbook/
+
+
