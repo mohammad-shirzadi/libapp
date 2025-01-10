@@ -90,4 +90,7 @@ db.sqlite3
 
 .venv
 libraryapp/libapp/migrations/
+libraryapp/libapp/templates/
 
+cookies*.txt
+*/cookies*.txt
