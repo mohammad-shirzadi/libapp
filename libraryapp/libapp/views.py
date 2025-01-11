@@ -65,16 +65,41 @@ def signup(request):
       
 @api_view(["POST","GET"])
 def search(request):
-    ## TODO search with other fields
     if not authorized(request):
         return Response({'Detaile' : 'Access Denied'})
     if request.method == 'POST':
-        search_word = request.POST['search']
-        search_cases = bookModel.objects.filter(title=search_word)
-        if search_cases:
-            SRList = [bookSerializer(search_case).data for search_case in search_cases]
-        else:
-            SRList = ""
+        ## TODO search with other fields
+        st = False
+        for item in ['bookID','author','title','year','poblisher']:
+            if request.POST.get(item):
+                st = True
+        if not st: 
+            return Response({"message": 'fill some field to search'})
+        
+        search_word = [request.POST[x] if x in request.POST else"" for x in ['bookID','author','title','year','poblisher']]
+        if 'gte' in search_word[3]:
+            search_cases = bookModel.objects.filter(bookID__icontains=search_word[0],
+                                                    author__icontains=search_word[1],
+                                                    title__icontains=search_word[2],
+                                                    year__gte=search_word[3].split('-')[1],
+                                                    publisher__icontains=search_word[4],
+                                                    )
+        elif 'lte' in search_word[3]: 
+            search_cases = bookModel.objects.filter(bookID__icontains=search_word[0],
+                                                    author__icontains=search_word[1],
+                                                    title__icontains=search_word[2],
+                                                    year__lte=search_word[3].split('-')[1],
+                                                    publisher__icontains=search_word[4],
+                                                    )
+        else: 
+            search_cases = bookModel.objects.filter(bookID__icontains=search_word[0],
+                                                    author__icontains=search_word[1],
+                                                    title__icontains=search_word[2],
+                                                    year__icontains=search_word[3],
+                                                    publisher__icontains=search_word[4],
+                                                    )
+
+        SRList = [bookSerializer(search_case).data for search_case in search_cases] if search_cases else ""
         context = {
             'SRList' : SRList,
             'username' : authorized(request).username
@@ -96,16 +121,16 @@ def borrow(request):
         borrowdate = request.POST['Bdate'] if 'Bdate' in request.POST else None
         returndate = request.POST['Rdate'] if 'Rdate' in request.POST else None 
         if borrowdate and returndate:
-            borrowModel.objects.create(Bbook=Bbook,Buser=Buser,borrowdate=borrowdate,returndate=returndate)
+            borrow = borrowModel.objects.create(Bbook=Bbook,Buser=Buser,borrowdate=borrowdate,returndate=returndate)
         elif borrowdate and not returndate:
-            borrowModel.objects.create(Bbook=Bbook,Buser=Buser,borrowdate=borrowdate)
+            borrow = borrowModel.objects.create(Bbook=Bbook,Buser=Buser,borrowdate=borrowdate)
         elif not borrowdate and returndate:
-            borrowModel.objects.create(Bbook=Bbook,Buser=Buser,returndate=returndate)
+            borrow = borrowModel.objects.create(Bbook=Bbook,Buser=Buser,returndate=returndate)
         elif not borrowdate and not returndate:
-            borrowModel.objects.create(Bbook=Bbook,Buser=Buser)
+            borrow = borrowModel.objects.create(Bbook=Bbook,Buser=Buser)
         Bbook.bookcounter -= 1
         Bbook.save()
-        borrow = borrowModel.objects.get(Bbook=Bbook,Buser=Buser)
+        #borrow = borrowModel.objects.get(Bbook=Bbook,Buser=Buser)
         return Response({'message' : 'The book borrowed to you', 'borrow': borrowSerializer(borrow).data})
     elif request.method == "GET":
         auth = authorized(request)
@@ -132,7 +157,13 @@ def returnbook(request):
     
 
 
-
-
-
+@api_view(['POST'])
+def test(request):
+    a =[]
+    for x in ['bookID','author','title','year','poblisher']:
+        if x in request.POST:
+            a.append(request.POST[x])
+    #a = [request.POST[x] if x in request.POST else "" for x in ['bookID','author','title','year','poblisher']]
+    
+    return Response({'a' : a})
 ##TODO show books borrowed with user 
