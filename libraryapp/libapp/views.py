@@ -3,7 +3,7 @@ from libapp.models import bookModel, borrowModel
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.authtoken.models import Token
-from libapp.serializer import bookSerializer, borrowSerializer
+from libapp.serializer import bookSerializer, borrowSerializer, userSerializer
 
 
 def authorized(request):
@@ -16,6 +16,7 @@ def authorized(request):
     if not User.objects.get(username=tkn.user.username):
         return False
     return tkn.user
+
 
 
 @api_view(["POST","GET"])
@@ -48,11 +49,28 @@ def signup(request):
         User.objects.create_user(last_name=Lname, first_name=Fname, username=username, email=email, password=password)
         newuser = User.objects.get(username=username)
         token = Token.objects.create(user=newuser)
-        return Response({'status':'not logged in', 'message':'user created successfuly!', 'TOKEN' : f'{token}'})
+        return Response({'status':'not logged in', 'message':'user created successfuly!', 'Token' : f'{token}'})
     else: 
         return Response({'status' : 'not logged in', 'message' : "your username is not available"})
 
-## TODO func delete user
+@api_view(["GET"])
+def UsersList(request):
+    if authorized(request).is_staff:
+        return Response({'users':[userSerializer(user).data for user in User.objects.all()]})
+    else:
+        return Response({'message':'Access Denied'})
+
+@api_view(["POST"])
+def deleteUser(request):
+    if authorized(request).is_staff:
+        if not request.POST['userID']:
+            return Response({'message': 'set the userID'})
+        user = User.objects.get(id=request.POST.get('userID'))
+        userserial = userSerializer(user).data
+        user.delete()
+        return Response({'message':f'{userserial} deleted'})
+    else:
+        return Response({'message':'Access Denied'})
 
 @api_view(["POST","GET"])
 def search(request):
