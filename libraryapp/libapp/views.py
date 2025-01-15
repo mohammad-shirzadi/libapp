@@ -23,6 +23,8 @@ def checkargs(request,l=list, all=True):
     else:
         return False if True not in [True if request.POST.get(i) else False for i in l] else True
 
+
+
 @api_view(["POST","GET"])
 def login(request):
     if checkargs(request,['username','password']):
@@ -55,6 +57,7 @@ def signup(request):
     else: 
         return Response({'status' : 'not logged in', 'message' : "your username is not available"})
 
+#api/Users/
 @api_view(["GET"])
 def UsersList(request):
     if authorized(request).is_staff:
@@ -73,6 +76,26 @@ def deleteUser(request):
         return Response({'message':f'{userserial} deleted'})
     else:
         return Response({'message':'Access Denied'})
+
+
+#api/books/
+@api_view(["POST"])
+def addbook(request):
+    if not checkargs(request,['author', 'title', 'year', 'publisher']):
+        return Response({'message':'some fields not found!'})
+    elif not authorized(request).has_perm('libapp.libperm'):
+        return Response({'message': 'Access Denied'})
+    author = request.POST['author']
+    title = request.POST['title']
+    year = request.POST['year']
+    publisher = request.POST['publisher']
+    if bookModel.objects.filter(author=author, title=title, year=year, publisher=publisher):
+        return Response({'message': 'this book is alredy exist!'})
+    if request.POST.get('bookcounter'):
+        bookcounter = request.POST['bookcounter']
+        bookModel.objects.create(author=author, title=title, year=year, publisher=publisher, bookcounter=bookcounter)
+    else:
+        bookModel.objects.create(author=author, title=title, year=year, publisher=publisher)
 
 @api_view(["POST","GET"])
 def search(request):
