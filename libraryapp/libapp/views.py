@@ -17,18 +17,21 @@ def authorized(request):
         return False
     return tkn.user
 
-
+def checkargs(request,l=list, all=True):
+    if all:
+        return False if False in [True if request.POST.get(i) else False for i in l] else True
+    else:
+        return False if True not in [True if request.POST.get(i) else False for i in l] else True
 
 @api_view(["POST","GET"])
 def login(request):
-    if 'username' not in request.POST or 'password' not in request.POST:
+    if checkargs(request,['username','password']):
         return Response({'status' : 'not loggedin','message' : "Your Username and Password didn't match."})
     username = request.POST['username']
     password = request.POST['password']
     if User.objects.get(username=username).check_password(password):
         user = User.objects.get(username=username)
         tkn = Token.objects.get(user=user).key
-        
         return Response({'status': 'logged in', 'message' : 'your loggedin','Token' : tkn})
     else:
         return Response({'status' : 'not loggedin','message' : "Your Username and Password didn't match."})
@@ -36,9 +39,8 @@ def login(request):
 
 @api_view(['POST'])
 def signup(request):
-    for arg in ['Fname', 'Lname','email','username','password']:
-        if arg not in request.POST:
-            return Response({'status' : 'not logged in', 'message' : f'try agin, {arg} is not found'})
+    if checkargs(request, ['Fname', 'Lname','email','username','password']):
+        return Response({'status' : 'not logged in', 'message' : f'try agin, some fields not found'})
     Fname = request.POST.get('Fname')
     Lname = request.POST.get('Lname')
     email = request.POST.get('email')
@@ -75,14 +77,8 @@ def deleteUser(request):
 @api_view(["POST","GET"])
 def search(request):
     if request.method == 'POST':
-        ## TODO search with other fields
-        st = False
-        for item in ['bookID','author','title','year','poblisher']:
-            if request.POST.get(item):
-                st = True
-        if not st: 
+        if not checkargs(request,['bookID','author','title','year','poblisher'],False): 
             return Response({"message": 'fill some field to search'})
-        
         search_word = [request.POST[x] if x in request.POST else"" for x in ['bookID','author','title','year','poblisher']]
         if 'gte' in search_word[3]:
             search_cases = bookModel.objects.filter(bookID__icontains=search_word[0],
@@ -136,7 +132,6 @@ def borrow(request):
             borrow = borrowModel.objects.create(Bbook=Bbook,Buser=Buser)
         Bbook.bookcounter -= 1
         Bbook.save()
-        #borrow = borrowModel.objects.get(Bbook=Bbook,Buser=Buser)
         return Response({'message' : 'The book borrowed to you', 'borrow': borrowSerializer(borrow).data})
     elif request.method == "GET":
         auth = authorized(request)
@@ -163,17 +158,5 @@ def returnbook(request):
         book.save()
         borrow.delete()
         return Response({'message': 'book returned'})
-    
-##TODO show books borrowed with user 
 
-
-#@api_view(['GET'])
-#def test(request):
-#    u = authorized(request)
-#    if u.has_perm('libapp.can_view_own_borrow'):
-#        a = borrowModel.objects.all()
-#
-#        return Response({'a' : [borrowSerializer(borrowed).data for borrowed in a]})
-#    return Response({'a' : 'nothing'})
-#
 
