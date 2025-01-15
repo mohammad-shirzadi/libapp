@@ -1,18 +1,10 @@
-from django.shortcuts import render
-from django.shortcuts import HttpResponse,redirect
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate 
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import login as auth_login
-
 from libapp.models import bookModel, borrowModel
-
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.authtoken.models import Token
 from libapp.serializer import bookSerializer, borrowSerializer
 
-# Create your views here.
 
 def authorized(request):
     if not request.headers["Authorization"].split(" "):
@@ -62,11 +54,10 @@ def signup(request):
         return Response({'status' : 'not Login', 'message' : "your username is not available"})
 
 ## TODO func delete user
-      
+
+
 @api_view(["POST","GET"])
 def search(request):
-    if not authorized(request):
-        return Response({'Detaile' : 'Access Denied'})
     if request.method == 'POST':
         ## TODO search with other fields
         st = False
@@ -102,7 +93,6 @@ def search(request):
         SRList = [bookSerializer(search_case).data for search_case in search_cases] if search_cases else ""
         context = {
             'SRList' : SRList,
-            'username' : authorized(request).username
         }
         return Response(context)
 
@@ -134,36 +124,40 @@ def borrow(request):
         return Response({'message' : 'The book borrowed to you', 'borrow': borrowSerializer(borrow).data})
     elif request.method == "GET":
         auth = authorized(request)
-        if auth:
+        if not auth:
+            return Response({'message' : 'not authorized'})
+        elif auth.has_perm('libapp.can_view_all_borrow'):
+            borrowedList = borrowModel.objects.all() 
+            return Response({'message' : 'librarian - authorized','borrowList' : [borrowSerializer(borrowed).data for borrowed in borrowedList]})
+        elif auth.has_perm('libapp.can_view_own_borrow'):
             borrowedList = borrowModel.objects.filter(Buser=auth) 
             return Response({'message' : 'authorized','borrowList' : [borrowSerializer(borrowed).data for borrowed in borrowedList]})
-        return Response({'message' : 'not authorized'})
 
 @api_view(['POST'])
 def returnbook(request):
     if request.method == "POST":
-        if not authorized(request):
+        if not authorized(request) or not authorized(request).has_perm('libapp.can_view_all_borrow'):
             return Response({'message': 'your not Authorized'})
-        borrowID = request.POST['borrowID']
-        auth = authorized(request)
-        if not request.POST['borrowID'] or not borrowModel.objects.get(borrowID=borrowID, Buser=auth):
+        if not request.POST['borrowID'] or not borrowModel.objects.get(borrowID=borrowID):
             return Response({'message': 'borrow is not exist'})
-        borrow = borrowModel.objects.get(borrowID=borrowID, Buser=auth)
+        borrowID = request.POST.get('borrowID')
+        borrow = borrowModel.objects.get(borrowID=borrowID)
         book = borrow.Bbook
         book.bookcounter += 1
         book.save()
         borrow.delete()
-        return Response({'message': 'books returned'})
+        return Response({'message': 'book returned'})
     
-
-
-@api_view(['POST'])
-def test(request):
-    a =[]
-    for x in ['bookID','author','title','year','poblisher']:
-        if x in request.POST:
-            a.append(request.POST[x])
-    #a = [request.POST[x] if x in request.POST else "" for x in ['bookID','author','title','year','poblisher']]
-    
-    return Response({'a' : a})
 ##TODO show books borrowed with user 
+
+
+#@api_view(['GET'])
+#def test(request):
+#    u = authorized(request)
+#    if u.has_perm('libapp.can_view_own_borrow'):
+#        a = borrowModel.objects.all()
+#
+#        return Response({'a' : [borrowSerializer(borrowed).data for borrowed in a]})
+#    return Response({'a' : 'nothing'})
+#
+
