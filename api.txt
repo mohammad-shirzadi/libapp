@@ -6,3 +6,30 @@ curl -d "bookID=<bookID>" -H "Authorization: Token 6f4440e66e9325ef1b2274376952f
 curl -d "borrowID=<borrowID>" -H "Authorization: Token 6f4440e66e9325ef1b2274376952f1b32da2da8b" http://localhost:8000/api/returnbook/
 
 
+import requests
+r = requests.post(
+    url='http://localhost:8000/api/signup/',
+    data={
+        'Fname' : 'Fname',
+        'Lname' : 'Lname',
+        'email' : 'email@email.com',
+        'username' : 'username',
+        'password' : 'password',
+    },
+)
+r = requests.post(
+url='http://localhost:8000/api/login/',
+data={
+    'username' : 'username',
+    'password' : 'password',
+},
+)
+r = requests.get(
+    url='http://localhost:8000/api/users/UsersList/',
+    headers= {'Authorization' : "Token *******"}
+)
+r = requests.post(
+    url='http://localhost:8000/api/users/deleteUser/',
+    headers= {'Authorization' : "Token *******"},
+    data={'userID':'userID'},
+)
