@@ -1,4 +1,3 @@
-from django.contrib import admin
 from django.urls import path
 from libapp import views
 
@@ -11,5 +10,4 @@ urlpatterns = [
     path('api/books/addbook/',views.addbook,name='addbook'),
     path('api/books/search/', views.search, name='search'),
     path('api/books/borrow/',views.borrow,name='borrow'),
-    #path('api/test/', views.test, name='test')
 ]
