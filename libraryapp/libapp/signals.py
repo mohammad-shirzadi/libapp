@@ -9,21 +9,21 @@ from libapp.models import borrowModel
 @receiver(post_migrate)
 def groupsAndPermission(sender,**kwarg):
     user_group = Group.objects.get_or_create(name='user_group')[0]
-    lib_group = Group.objects.get_or_create(name='libgroup')[0]
+    lib_group = Group.objects.get_or_create(name='lib_group')[0]
 
     contenttype = ContentType.objects.get_for_model(borrowModel)
 
-    can_view_own_borrows = Permission.objects.get_or_create(
-        codename='can_view_own_borrow',
-        name='can view own borrow',
+    libperm = Permission.objects.get_or_create(
+        codename='libperm',
+        name='libperm',
         content_type=contenttype,
     )[0]
-    can_view_all_borrows = Permission.objects.get_or_create(
-        codename='can_view_all_borrow',
-        name='can view all borrow',
+    normalperm = Permission.objects.get_or_create(
+        codename='normalperm',
+        name='normalperm',
         content_type=contenttype,
     )[0]
 
-    user_group.permissions.add(can_view_own_borrows)
-    lib_group.permissions.add(can_view_all_borrows,can_view_own_borrows)
+    user_group.permissions.add(normalperm)
+    lib_group.permissions.add(libperm)
     

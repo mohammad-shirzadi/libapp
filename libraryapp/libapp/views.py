@@ -45,16 +45,14 @@ def signup(request):
     password = request.POST.get('password')
     if not User.objects.filter(username=username):
         ##TODO  send Email and verifying email address
-        User.objects.create_user(last_name=Lname,first_name=Fname ,username=username, email=email,password=password)
+        User.objects.create_user(last_name=Lname, first_name=Fname, username=username, email=email, password=password)
         newuser = User.objects.get(username=username)
         token = Token.objects.create(user=newuser)
-
         return Response({'status':'not logged in', 'message':'user created successfuly!', 'TOKEN' : f'{token}'})
     else: 
-        return Response({'status' : 'not Login', 'message' : "your username is not available"})
+        return Response({'status' : 'not logged in', 'message' : "your username is not available"})
 
 ## TODO func delete user
-
 
 @api_view(["POST","GET"])
 def search(request):
@@ -126,17 +124,17 @@ def borrow(request):
         auth = authorized(request)
         if not auth:
             return Response({'message' : 'not authorized'})
-        elif auth.has_perm('libapp.can_view_all_borrow'):
+        elif auth.has_perm('libapp.libperm'):
             borrowedList = borrowModel.objects.all() 
             return Response({'message' : 'librarian - authorized','borrowList' : [borrowSerializer(borrowed).data for borrowed in borrowedList]})
-        elif auth.has_perm('libapp.can_view_own_borrow'):
+        elif auth.has_perm('libapp.normalperm'):
             borrowedList = borrowModel.objects.filter(Buser=auth) 
             return Response({'message' : 'authorized','borrowList' : [borrowSerializer(borrowed).data for borrowed in borrowedList]})
 
 @api_view(['POST'])
 def returnbook(request):
     if request.method == "POST":
-        if not authorized(request) or not authorized(request).has_perm('libapp.can_view_all_borrow'):
+        if not authorized(request) or not authorized(request).has_perm('libapp.libperm'):
             return Response({'message': 'your not Authorized'})
         if not request.POST['borrowID'] or not borrowModel.objects.get(borrowID=borrowID):
             return Response({'message': 'borrow is not exist'})
